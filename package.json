@@ -1,0 +1,28 @@
+{
+  "name": "gumbo-html",
+  "version": "0.1.1",
+  "description": "Node.js CSS Selector Based on Gumbo Parser",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "install.js",
+    "LICENSE",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fangwd/gumbo-html.git"
+  },
+  "keywords": ["Gumbo Parser", "CSS Selector", "HTML Parser"],
+  "author": "Weidong Fang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fangwd/gumbo-html/issues"
+  },
+  "homepage": "https://github.com/fangwd/gumbo-html"
+}
