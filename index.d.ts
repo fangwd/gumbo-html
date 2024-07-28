@@ -15,8 +15,8 @@ export declare type XElement = {
   first_s: (selector: string) => XElement;
   hasClass: (name: string) => boolean;
   hasAttribute: (name: string) => boolean;
-  prev: (selector: string) => XElement | null;
-  next: (selector: string) => XElement | null;
+  prev: (selector?: string) => XElement | null;
+  next: (selector?: string) => XElement | null;
 };
 
 export declare type XDocument = {
