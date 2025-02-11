@@ -13,7 +13,8 @@ export declare type XElement = {
   find: (selector: string) => XElement[];
   first: (selector: string) => XElement | null;
   first_s: (selector: string) => XElement;
-  only: (selector: string) => XElement;
+  only: (selector: string) => XElement | null;
+  only_s: (selector: string) => XElement;
   hasClass: (name: string) => boolean;
   hasAttribute: (name: string) => boolean;
   prev: (selector?: string) => XElement | null;
@@ -28,7 +29,8 @@ export declare type XDocument = {
   find: (selector: string) => XElement[]
   first: (selector: string) => XElement | null;
   first_s: (selector: string) => XElement;
-  only: (selector: string) => XElement;
+  only: (selector: string) => XElement | null;
+  only_s: (selector: string) => XElement;
 };
 
 export declare function parse(html: string): XDocument;
