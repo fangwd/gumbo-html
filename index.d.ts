@@ -3,7 +3,7 @@ export declare type NodeType = 'DOCUMENT' | 'ELEMENT' | 'TEXT' | 'CDATA' | 'COMM
 export declare type XElement = {
   childNodes: XElement[];
   nodeType: NodeType;
-  parent: Element | null;
+  parent: XElement | null;
   outerHTML: string;
   innerText: string;
   tagName: string | null;
@@ -13,6 +13,7 @@ export declare type XElement = {
   find: (selector: string) => XElement[];
   first: (selector: string) => XElement | null;
   first_s: (selector: string) => XElement;
+  only: (selector: string) => XElement;
   hasClass: (name: string) => boolean;
   hasAttribute: (name: string) => boolean;
   prev: (selector?: string) => XElement | null;
@@ -27,6 +28,7 @@ export declare type XDocument = {
   find: (selector: string) => XElement[]
   first: (selector: string) => XElement | null;
   first_s: (selector: string) => XElement;
+  only: (selector: string) => XElement;
 };
 
 export declare function parse(html: string): XDocument;
