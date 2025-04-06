@@ -1,6 +1,6 @@
 {
   "name": "gumbo-html",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Node.js CSS Selector Based on Gumbo Parser",
   "main": "index.js",
   "files": [
