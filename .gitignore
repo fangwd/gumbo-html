@@ -1,0 +1,10 @@
+node_modules/
+build/
+*.node
+libs/
+.DS_Store
+.vscode/
+.idea/
+npm-debug.log*
+yarn-error.log
+*.tgz

@@ -1,24 +1,55 @@
 {
   "name": "gumbo-html",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Node.js CSS Selector Based on Gumbo Parser",
   "main": "index.js",
+  "types": "index.d.ts",
+  "gypfile": true,
   "files": [
     "index.js",
     "index.d.ts",
-    "install.js",
+    "lib/wrapper.js",
+    "examples/*.js",
+    "binding.gyp",
+    "src/addon.cc",
+    "src/html_document.cc",
+    "src/html_document.h",
+    "src/html_element.cc",
+    "src/html_element.h",
+    "src/jsa.c",
+    "src/jsa.h",
+    "src/xnode.c",
+    "src/xnode_query.c",
+    "src/xnode_query_parser.c",
+    "src/xnode_query.h",
+    "src/include/win/strings.h",
+    "src/gumbo-parser/src/*.c",
+    "src/gumbo-parser/src/*.h",
+    "src/gumbo-parser/COPYING",
     "LICENSE",
-    "package.json",
     "README.md"
   ],
   "scripts": {
-    "postinstall": "node install.js"
+    "install": "node-gyp rebuild",
+    "example": "node examples/example.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "node-addon-api": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fangwd/gumbo-html.git"
   },
-  "keywords": ["Gumbo Parser", "CSS Selector", "HTML Parser"],
+  "keywords": [
+    "Gumbo Parser",
+    "CSS Selector",
+    "HTML Parser"
+  ],
   "author": "Weidong Fang",
   "license": "MIT",
   "bugs": {
