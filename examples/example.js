@@ -45,25 +45,25 @@ posts.forEach((post, index) => {
   console.log('  has slug:', post.hasAttribute('data-slug'));
 });
 
-// first_s(selector) is the throwing version of first(selector).
+// firstOrThrow(selector) is the throwing version of first(selector).
 // Use it when the element is required for the rest of your code.
-const content = doc.first_s('#content');
+const content = doc.firstOrThrow('#content');
 console.log('Main outerHTML starts with:', content.outerHTML.slice(0, 20));
 
 // only(selector) returns the match only when exactly one element is found.
 const featuredPost = doc.only('article.featured');
 console.log('Featured slug:', featuredPost.attr_s('data-slug'));
 
-// only_s(selector) throws unless exactly one element is found.
+// onlyOrThrow(selector) throws unless exactly one element is found.
 try {
-  doc.only_s('article.post');
+  doc.onlyOrThrow('article.post');
 } catch (error) {
-  console.log('only_s on many posts:', error.message);
+  console.log('onlyOrThrow on many posts:', error.message);
 }
 
 // Element-scoped queries search only inside that element.
-const firstPost = doc.first_s('article.post');
-console.log('CTA href:', firstPost.first_s('a.cta').attr_s('href'));
+const firstPost = doc.firstOrThrow('article.post');
+console.log('CTA href:', firstPost.firstOrThrow('a.cta').attr_s('href'));
 
 // next(selector) and prev(selector) walk element siblings.
 const secondPost = firstPost.next('article.post');

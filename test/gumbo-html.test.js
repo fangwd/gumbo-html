@@ -16,6 +16,16 @@ test('parse validates html input', () => {
   });
 });
 
+test('legacy throwing selector aliases are not exposed', () => {
+  const doc = parse('<div><p>x</p></div>');
+  const div = doc.firstOrThrow('div');
+
+  assert.equal(doc.first_s, undefined);
+  assert.equal(doc.only_s, undefined);
+  assert.equal(div.first_s, undefined);
+  assert.equal(div.only_s, undefined);
+});
+
 test('root parent and non-element helpers are safe', () => {
   const doc = parse('<div>x <span>y</span></div>');
   const root = doc.documentElement;
@@ -82,7 +92,7 @@ test('document exposes document-level properties', () => {
 
 test('matches and traversal filters use the whole selector', () => {
   const doc = parse('<section><h1>Title</h1></section>');
-  const h1 = doc.first_s('h1');
+  const h1 = doc.firstOrThrow('h1');
 
   assert.equal(h1.matches('div h1'), false);
   assert.equal(h1.matches('section h1'), true);
@@ -94,7 +104,7 @@ test('element urlAttr resolves using parse baseUrl', () => {
     baseUrl: 'https://example.com/base/',
   });
 
-  assert.equal(doc.first_s('a').urlAttr('href'), 'https://example.com/path');
+  assert.equal(doc.firstOrThrow('a').urlAttr('href'), 'https://example.com/path');
 });
 
 test('table rows ignore tbody-only header rows when headers are known', () => {

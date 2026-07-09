@@ -49,17 +49,17 @@ run('Basic API', () => {
     assert.strictEqual(doc.first('nonexistent'), null);
   });
 
-  test('first_s returns element or throws', () => {
+  test('firstOrThrow returns element or throws', () => {
     const doc = html.parse('<div><p>a</p></div>');
-    assert.strictEqual(doc.first_s('p').innerText, 'a');
-    assert.throws(() => doc.first_s('nonexistent'), /No element found/);
+    assert.strictEqual(doc.firstOrThrow('p').innerText, 'a');
+    assert.throws(() => doc.firstOrThrow('nonexistent'), /No element found/);
   });
 
-  test('only / only_s', () => {
+  test('only / onlyOrThrow', () => {
     const doc = html.parse('<div><p class=a>hi</p><p>there</p></div>');
     assert.strictEqual(doc.only('.a').innerText, 'hi');
     assert.strictEqual(doc.only('p'), null);
-    assert.throws(() => doc.only_s('p'), /Not a single element/);
+    assert.throws(() => doc.onlyOrThrow('p'), /Not a single element/);
   });
 
   test('attr / attr_s', () => {

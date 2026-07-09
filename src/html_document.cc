@@ -80,9 +80,7 @@ void Document::Init(Napi::Env env) {
   Napi::Function func = DefineClass(env, "Document", {
     InstanceMethod("find", &Document::Find),
     InstanceMethod("first", &Document::First),
-    InstanceMethod("first_s", &Document::FirstSafe),
     InstanceMethod("only", &Document::Only),
-    InstanceMethod("only_s", &Document::OnlySafe),
     InstanceAccessor("documentElement", &Document::GetDocumentElement, nullptr),
 
     InstanceMethod("firstOrThrow", &Document::FirstOrThrow),

@@ -37,6 +37,9 @@ doc.find('.bar').forEach((el) => {
 });
 ```
 
+For the complete API reference, including selector support, traversal helpers,
+structured extraction, table parsing, and URL resolution, see [API.md](API.md).
+
 ## License
 
 MIT. Bundles [google/gumbo-parser](https://github.com/google/gumbo-parser)

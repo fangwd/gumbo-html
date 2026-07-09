@@ -22,10 +22,8 @@ export declare type XElement = {
   attr_s: (name: string) => string;
   find: (selector: string) => XElement[];
   first: (selector: string) => XElement | null;
-  first_s: (selector: string) => XElement;
   firstOrThrow: (selector: string) => XElement;
   only: (selector: string) => XElement | null;
-  only_s: (selector: string) => XElement;
   onlyOrThrow: (selector: string) => XElement;
   hasClass: (name: string) => boolean;
   hasAttribute: (name: string) => boolean;
@@ -58,10 +56,8 @@ export declare type XDocument = {
 
   find: (selector: string) => XElement[];
   first: (selector: string) => XElement | null;
-  first_s: (selector: string) => XElement;
   firstOrThrow: (selector: string) => XElement;
   only: (selector: string) => XElement | null;
-  only_s: (selector: string) => XElement;
   onlyOrThrow: (selector: string) => XElement;
 
   // New convenience methods

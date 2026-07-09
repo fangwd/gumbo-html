@@ -4,7 +4,7 @@
  * gumbo-html examples
  *
  * Demonstrates all the new features including:
- * - Friendly aliases (firstOrThrow, onlyOrThrow, attrOrThrow)
+ * - Required-value helpers (firstOrThrow, onlyOrThrow, attrOrThrow)
  * - Convenience methods (exists, count, text, attr with selector)
  * - Traversal (closest, children, siblings, matches, is)
  * - Table extraction (rows, table)
@@ -82,11 +82,11 @@ const HTML = `
 const doc = html.parse(HTML, { baseUrl: 'https://example.com/blog/' });
 
 // ============================================================
-// 1. Friendly Required/Optional Aliases
+// 1. Required/Optional Helpers
 // ============================================================
-console.log('=== 1. Friendly Aliases ===');
+console.log('=== 1. Required/Optional Helpers ===');
 
-// firstOrThrow - like first_s but more readable
+// firstOrThrow - get the first match or throw when it is missing
 const firstArticle = doc.firstOrThrow('article');
 console.log('firstOrThrow article text:', firstArticle.text('h1'));
 
