@@ -32,7 +32,8 @@ export declare type XElement = {
 
   // New methods
   attrOrThrow: (name: string) => string;
-  text: ((opts?: TextOptions) => string) | ((selector: string, opts?: TextOptions) => string | null);
+  text(opts?: TextOptions): string;
+  text(selector: string, opts?: TextOptions): string | null;
   textOrThrow: (selector: string) => string;
   exists: (selector: string) => boolean;
   count: (selector: string) => number;
