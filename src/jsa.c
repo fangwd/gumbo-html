@@ -119,64 +119,7 @@ void jsa_insert(jsa_t *a, uint32_t index, JSA_TYPE m) {
     }
 }
 
-void jsa_dedup(jsa_t *a) {
-    uint32_t i, j, k, n = a->size;
-
-    for (i = 0; i < n; i++) {
-        for (j = i + 1; j < n;) {
-            if (a->item[j] == a->item[i]) {
-                for (k = j; k + 1 < n; k++) {
-                    a->item[k] = a->item[k + 1];
-                }
-                n--;
-            } else {
-                j++;
-            }
-        }
-    }
-
-    if (n != a->size) {
-        jsa_resize(a, n);
-    }
-}
-
 jsa_t *jsa_clear(jsa_t *a) {
     jsa_resize(a, 0);
     return a;
 }
-
-#if TEST_DEDUP
-
-#include <stdio.h>
-
-int main() {
-    jsa_t *a = jsa_create();
-    int i, n;
-
-    printf("Enter array elements (-1 to stop):\n");
-    while (1) {
-        scanf("%d", &n);
-        if (n == -1) break;
-        jsa_push(a, (void*)(uintptr_t)n);
-    }
-
-    for (i = 0; i < (int)jsa_size(a); i++) {
-        printf("%lu ", (unsigned long)jsa_get(a, i));
-    }
-
-    printf("\n");
-
-    jsa_dedup(a);
-
-    for (i = 0; i < (int)jsa_size(a); i++) {
-        printf("%lu ", (unsigned long)jsa_get(a, i));
-    }
-
-    printf("\n");
-
-    jsa_free(a);
-
-    return 0;
-}
-#endif
-

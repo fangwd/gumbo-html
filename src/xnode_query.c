@@ -141,9 +141,11 @@ static int xnode_match_node_type(GumboNode *node, const char *type) {
     return 0;
 }
 
-static int xnode_negation_matches(XNodeQuery *query, GumboNode *node);
+static int xnode_negation_matches(XNodeQuery *query, GumboNode *node,
+        GumboNode *document);
 
-int xnode_match_node(GumboNode *node, XNodeSelector *node_selector) {
+static int xnode_match_selector(GumboNode *node, XNodeSelector *node_selector,
+        GumboNode *document) {
     GumboNodeType     type = node->type;
     GumboVector      *attributes;
     uint32_t          i, j;
@@ -172,78 +174,11 @@ int xnode_match_node(GumboNode *node, XNodeSelector *node_selector) {
 
     for (i = 0; i < jsa_size(&node_selector->negations); i++) {
         XNodeQuery *query = (XNodeQuery *)jsa_get(&node_selector->negations, i);
-        if (xnode_negation_matches(query, node)) return 0;
+        if (xnode_negation_matches(query, node, document)) return 0;
     }
 
     return 1;
 }
-
-static int compare_nodes(const void *a, const void *b) {
-    JSA_TYPE x = *(const JSA_TYPE *)a, y = *(const JSA_TYPE *)b;
-    return (x > y) - (x < y);
-}
-
-static GumboNode *xnode_document_of(GumboNode *node) {
-    while (node->parent) node = node->parent;
-    return node;
-}
-
-// Chained queries are matched once against the whole document and cached;
-// matching them node by node grows exponentially with the chain length.
-static void xnode_query_match_document(XNodeQuery *query, GumboNode *document) {
-    if (query->matched_document == document) return;
-    query->matched = (jsa_t *)xnode_query_execute(query, document);
-    if (query->matched) {
-        qsort(query->matched->item, query->matched->size, sizeof(JSA_TYPE),
-            compare_nodes);
-    }
-    query->matched_document = document;
-}
-
-static int xnode_query_contains(XNodeQuery *query, GumboNode *node) {
-    JSA_TYPE key = (JSA_TYPE)node;
-    xnode_query_match_document(query, xnode_document_of(node));
-    return query->matched && bsearch(&key, query->matched->item,
-        query->matched->size, sizeof(JSA_TYPE), compare_nodes) != NULL;
-}
-
-static int xnode_negation_matches(XNodeQuery *query, GumboNode *node) {
-    return query->selectors.size == 1 ?
-        xnode_match_node(node, xnode_query_selector(query, 0)) :
-        xnode_query_contains(query, node);
-}
-
-// Matches chained :not() arguments before a walk, so that walks never nest.
-static void xnode_query_prepare(XNodeQuery *query, GumboNode *document) {
-    uint32_t i, j;
-    if (query->prepared_document == document) return;
-    for (i = 0; i < query->selectors.size; i++) {
-        XNodeSelector *selector = xnode_query_selector(query, i);
-        for (j = 0; j < selector->negations.size; j++) {
-            XNodeQuery *negation = (XNodeQuery *)jsa_get(&selector->negations, j);
-            if (negation->selectors.size == 1) {
-                xnode_query_prepare(negation, document);
-            } else {
-                xnode_query_match_document(negation, document);
-            }
-        }
-    }
-    query->prepared_document = document;
-}
-
-int xnode_query_matches(XNodeQuery *query, XNode *node) {
-    if (!node || query->selectors.size == 0) return 0;
-    if (query->selectors.size > 1) return xnode_query_contains(query, node);
-    xnode_query_prepare(query, xnode_document_of(node));
-    return xnode_match_node(node, xnode_query_selector(query, 0));
-}
-
-// Open-addressing set of nodes; slot value 0 marks an empty slot.
-typedef struct {
-    JSA_TYPE *slots;
-    uint32_t  capacity;
-    uint32_t  size;
-} XNodeSet;
 
 static uint32_t xnode_set_slot(const XNodeSet *set, JSA_TYPE key) {
     uint32_t mask = set->capacity - 1;
@@ -252,15 +187,18 @@ static uint32_t xnode_set_slot(const XNodeSet *set, JSA_TYPE key) {
     return i;
 }
 
-// Returns 0 if the node is already in the set.
+// Returns 0 if the node is already in the set; a NULL set accepts every node.
 static int xnode_set_add(XNodeSet *set, GumboNode *node) {
     JSA_TYPE key = (JSA_TYPE)node;
     uint32_t i;
+
+    if (!set) return 1;
 
     if (set->size * 2 >= set->capacity) {
         XNodeSet grown;
         grown.capacity = set->capacity ? set->capacity * 2 : 64;
         grown.slots = (JSA_TYPE *)calloc(grown.capacity, sizeof(JSA_TYPE));
+        if (!grown.slots) abort();
         grown.size = set->size;
         for (i = 0; i < set->capacity; i++) {
             if (set->slots[i]) grown.slots[xnode_set_slot(&grown, set->slots[i])] = set->slots[i];
@@ -276,54 +214,131 @@ static int xnode_set_add(XNodeSet *set, GumboNode *node) {
     return 1;
 }
 
+static int xnode_set_contains(const XNodeSet *set, GumboNode *node) {
+    return set->size > 0 && set->slots[xnode_set_slot(set, (JSA_TYPE)node)] != 0;
+}
+
 static void xnode_set_clear(XNodeSet *set) {
     if (set->slots) memset(set->slots, 0, set->capacity * sizeof(JSA_TYPE));
     set->size = 0;
 }
 
+static GumboNode *xnode_document_of(GumboNode *node) {
+    while (node->parent) node = node->parent;
+    return node;
+}
+
+// Chained queries are matched once against the whole document and cached;
+// matching them node by node grows exponentially with the chain length.
+static void xnode_query_match_document(XNodeQuery *query, GumboNode *document) {
+    const XNodeArray *result;
+    uint32_t i;
+
+    if (query->matched_document == document) return;
+    result = xnode_query_execute(query, document);
+    xnode_set_clear(&query->matched);
+    for (i = 0; result && i < result->size; i++) {
+        xnode_set_add(&query->matched, (GumboNode *)jsa_get(result, i));
+    }
+    query->matched_document = document;
+}
+
+static int xnode_negation_matches(XNodeQuery *query, GumboNode *node,
+        GumboNode *document) {
+    if (query->selectors.size == 1) {
+        return xnode_match_selector(node, xnode_query_selector(query, 0), document);
+    }
+    xnode_query_match_document(query, document);
+    return xnode_set_contains(&query->matched, node);
+}
+
+static void xnode_query_prepare(XNodeQuery *query, GumboNode *document);
+
+// Matches chained :not() arguments before a walk, so that walks never nest.
+static void xnode_selector_prepare(XNodeSelector *selector, GumboNode *document) {
+    uint32_t i;
+    for (i = 0; i < selector->negations.size; i++) {
+        XNodeQuery *negation = (XNodeQuery *)jsa_get(&selector->negations, i);
+        if (negation->selectors.size == 1) {
+            xnode_query_prepare(negation, document);
+        } else {
+            xnode_query_match_document(negation, document);
+        }
+    }
+}
+
+static void xnode_query_prepare(XNodeQuery *query, GumboNode *document) {
+    uint32_t i;
+    if (query->prepared_document == document) return;
+    for (i = 0; i < query->selectors.size; i++) {
+        xnode_selector_prepare(xnode_query_selector(query, i), document);
+    }
+    query->prepared_document = document;
+}
+
+int xnode_match_node(GumboNode *node, XNodeSelector *selector) {
+    GumboNode *document = xnode_document_of(node);
+    xnode_selector_prepare(selector, document);
+    return xnode_match_selector(node, selector, document);
+}
+
+int xnode_query_matches(XNodeQuery *query, XNode *node) {
+    GumboNode *document;
+
+    if (!node || query->relative || query->selectors.size == 0) return 0;
+    document = xnode_document_of(node);
+    if (query->selectors.size == 1) {
+        xnode_query_prepare(query, document);
+        return xnode_match_selector(node, xnode_query_selector(query, 0), document);
+    }
+    xnode_query_match_document(query, document);
+    return xnode_set_contains(&query->matched, node);
+}
+
 static void xnode_match_node_descendant(GumboNode* node, jsa_t *next_nodes,
-        XNodeSet *seen, XNodeSelector *selector) {
+        XNodeSet *seen, XNodeSelector *selector, GumboNode *document) {
     GumboVector *children = xnode_children(node);
     uint32_t i;
     for (i = 0; children && i < children->length; ++i) {
         GumboNode* child = (GumboNode*) children->data[i];
-        if (xnode_match_node(child, selector)) {
+        if (xnode_match_selector(child, selector, document)) {
             // An earlier walk already covered this subtree.
             if (!xnode_set_add(seen, child)) continue;
             jsa_push(next_nodes, child);
         }
-        xnode_match_node_descendant(child, next_nodes, seen, selector);
+        xnode_match_node_descendant(child, next_nodes, seen, selector, document);
     }
 }
 
 static void xnode_match_node_child(GumboNode* node, jsa_t *next_nodes,
-        XNodeSet *seen, XNodeSelector *selector) {
+        XNodeSet *seen, XNodeSelector *selector, GumboNode *document) {
     GumboVector *children = xnode_children(node);
     uint32_t i;
     for (i = 0; children && i < children->length; ++i) {
         GumboNode* child = (GumboNode*) children->data[i];
-        if (xnode_match_node(child, selector) && xnode_set_add(seen, child)) {
+        if (xnode_match_selector(child, selector, document) && xnode_set_add(seen, child)) {
             jsa_push(next_nodes, child);
         }
     }
 }
 
-static void xnode_match_node_adjacent_sibling(GumboNode* node,
-        jsa_t *next_nodes, XNodeSet *seen, XNodeSelector *selector) {
+static void xnode_match_node_adjacent_sibling(GumboNode* node, jsa_t *next_nodes,
+        XNodeSet *seen, XNodeSelector *selector, GumboNode *document) {
     if (node->type == GUMBO_NODE_ELEMENT || node->type == GUMBO_NODE_TEMPLATE) {
         GumboNode *next = xnode_next(node, NULL);
-        if (next && xnode_match_node(next, selector) && xnode_set_add(seen, next)) {
+        if (next && xnode_match_selector(next, selector, document) &&
+                xnode_set_add(seen, next)) {
             jsa_push(next_nodes, next);
         }
     }
 }
 
 static void xnode_match_node_general_sibling(GumboNode* node, jsa_t *next_nodes,
-        XNodeSet *seen, XNodeSelector *selector) {
+        XNodeSet *seen, XNodeSelector *selector, GumboNode *document) {
 
     if (node->type == GUMBO_NODE_ELEMENT || node->type == GUMBO_NODE_TEMPLATE) {
         while ((node = xnode_next(node, NULL))) {
-            if (xnode_match_node(node, selector)) {
+            if (xnode_match_selector(node, selector, document)) {
                 // An earlier walk already covered the remaining siblings.
                 if (!xnode_set_add(seen, node)) break;
                 jsa_push(next_nodes, node);
@@ -364,34 +379,42 @@ const XNodeArray *xnode_query_execute(XNodeQuery *query, const XNode *node) {
     uint32_t i, j;
     jsa_t *prev_nodes = &query->result[0];
     jsa_t *next_nodes = &query->result[1];
+    GumboNode *document = xnode_document_of((GumboNode *)node);
     XNodeSet seen = { NULL, 0, 0 };
 
-    xnode_query_prepare(query, xnode_document_of((GumboNode *)node));
-    // The result buffers are about to be reused.
-    query->matched_document = NULL;
+    // As with :scope in browsers, a relative query from the document is
+    // relative to its root element.
+    if (query->relative && node->type == GUMBO_NODE_DOCUMENT) {
+        node = xnode_first_child((XNode *)node, NULL);
+        if (!node) return NULL;
+    }
+
+    xnode_query_prepare(query, document);
     prev_nodes->size = 0;
     jsa_push(prev_nodes, node);
 
     for (i = 0; i < query->selectors.size; i++) {
         XNodeSelector *selector = xnode_query_get_selector(query, i);
+        // Walks from a single node cannot produce duplicates.
+        XNodeSet *dedup = prev_nodes->size > 1 ? &seen : NULL;
 
         next_nodes->size = 0;
-        xnode_set_clear(&seen);
+        if (dedup) xnode_set_clear(dedup);
 
         for (j = 0; j < jsa_size(prev_nodes); j++) {
             GumboNode *node = (GumboNode*) jsa_get(prev_nodes, j);
             switch (selector->combinator) {
             case XQSEL_DESCENDANT:
-                xnode_match_node_descendant(node, next_nodes, &seen, selector);
+                xnode_match_node_descendant(node, next_nodes, dedup, selector, document);
                 break;
             case XQSEL_CHILD:
-                xnode_match_node_child(node, next_nodes, &seen, selector);
+                xnode_match_node_child(node, next_nodes, dedup, selector, document);
                 break;
             case XQSEL_ADJACENT_SIBLING:
-                xnode_match_node_adjacent_sibling(node, next_nodes, &seen, selector);
+                xnode_match_node_adjacent_sibling(node, next_nodes, dedup, selector, document);
                 break;
             case XQSEL_GENERAL_SIBLING:
-                xnode_match_node_general_sibling(node, next_nodes, &seen, selector);
+                xnode_match_node_general_sibling(node, next_nodes, dedup, selector, document);
                 break;
             default:
                 assert(0);

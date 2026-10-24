@@ -428,9 +428,12 @@ static XNodeQuery* xnode_query_alloc(char *data) {
     jsa_init(&query->selectors);
     jsa_init(&query->result[0]);
     jsa_init(&query->result[1]);
+    query->relative = 0;
     query->prepared_document = NULL;
     query->matched_document = NULL;
-    query->matched = NULL;
+    query->matched.slots = NULL;
+    query->matched.capacity = 0;
+    query->matched.size = 0;
     return query;
 }
 
@@ -442,6 +445,7 @@ void xnode_query_free(XNodeQuery *query) {
     jsa_clean(&query->selectors);
     jsa_clean(&query->result[0]);
     jsa_clean(&query->result[1]);
+    xfree(query->matched.slots);
     xfree(query->data);
     xfree(query);
 }
@@ -464,6 +468,7 @@ XNodeQuery *xnode_query_create(const char *query_text, const char **errptr,
     }
 
     query = xnode_query_alloc(parser.data);
+    query->relative = combinator != XQSEL_DESCENDANT;
     xnode_parse_chain(&parser, query, combinator);
 
     if (!parser.error && query->selectors.size == 0) {

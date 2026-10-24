@@ -68,7 +68,10 @@ Supported selector features:
 - Combinators: descendant `A B`, child `A > B`, adjacent sibling `A + B`,
   general sibling `A ~ B`
 - Relative selectors beginning with a combinator, such as `> li`, when querying
-  from a specific context
+  from a specific context. From a document, they are relative to the `<html>`
+  element, so `doc.find('> body')` returns `<body>`. Methods that match a single
+  element (`matches`, `closest`, `next`, `prev`, and the `children`/`siblings`
+  filters) reject them.
 - Negation: `td:not([data-name="attribute-title"])`, `a:not(.external)`.
   Arguments may be compound selectors, selector chains, or comma-separated
   lists: `p:not(.hidden, section > p)`. Multiple and nested `:not()` expressions

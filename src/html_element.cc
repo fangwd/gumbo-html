@@ -483,7 +483,7 @@ Napi::Value Element::Next(const Napi::CallbackInfo& info) {
 
   if (has_selector) {
     QueryHandle query(selector.c_str());
-    if (!query.get()) {
+    if (!query.get() || query.get()->relative) {
       Napi::Error::New(env, "Bad selector.").ThrowAsJavaScriptException();
       return env.Undefined();
     }
@@ -514,7 +514,7 @@ Napi::Value Element::Prev(const Napi::CallbackInfo& info) {
 
   if (has_selector) {
     QueryHandle query(selector.c_str());
-    if (!query.get()) {
+    if (!query.get() || query.get()->relative) {
       Napi::Error::New(env, "Bad selector.").ThrowAsJavaScriptException();
       return env.Undefined();
     }
@@ -700,7 +700,7 @@ Napi::Value Element::Closest(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
   QueryHandle query(selector.c_str());
-  if (!query.get()) {
+  if (!query.get() || query.get()->relative) {
     Napi::Error::New(env, "Bad selector.").ThrowAsJavaScriptException();
     return env.Undefined();
   }
@@ -728,7 +728,7 @@ Napi::Value Element::Matches(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
   QueryHandle query(selector.c_str());
-  if (!query.get()) {
+  if (!query.get() || query.get()->relative) {
     Napi::Error::New(env, "Bad selector.").ThrowAsJavaScriptException();
     return env.Undefined();
   }
@@ -758,7 +758,8 @@ Napi::Value Element::Children(const Napi::CallbackInfo& info) {
   if (info.Length() > 0 && info[0].IsString() && !info[0].IsUndefined() && !info[0].IsNull()) {
     selStr = info[0].As<Napi::String>();
     filter = xnode_query_create(selStr.c_str(), NULL, NULL);
-    if (!filter) {
+    if (!filter || filter->relative) {
+      if (filter) xnode_query_free(filter);
       Napi::Error::New(env, "Bad selector.").ThrowAsJavaScriptException();
       return Napi::Array::New(env, 0);
     }
@@ -805,7 +806,8 @@ Napi::Value Element::Siblings(const Napi::CallbackInfo& info) {
   if (info.Length() > 0 && info[0].IsString() && !info[0].IsUndefined() && !info[0].IsNull()) {
     selStr = info[0].As<Napi::String>();
     filter = xnode_query_create(selStr.c_str(), NULL, NULL);
-    if (!filter) {
+    if (!filter || filter->relative) {
+      if (filter) xnode_query_free(filter);
       Napi::Error::New(env, "Bad selector.").ThrowAsJavaScriptException();
       return Napi::Array::New(env, 0);
     }

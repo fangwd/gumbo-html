@@ -128,18 +128,28 @@ typedef struct {
     XNodeQueryType combinator;
 } XNodeSelector;
 
+// Open-addressing set of nodes; a zero slot is empty.
+typedef struct {
+    JSA_TYPE *slots;
+    uint32_t  capacity;
+    uint32_t  size;
+} XNodeSet;
+
 typedef struct {
     jsa_t selectors;
     char *data;
     jsa_t result[2];
 
+    // Set when the query starts with a combinator, as in `> li`.
+    int relative;
+
     // Document whose chained :not() arguments have been matched.
     const GumboNode *prepared_document;
 
     // For a chained query matched node by node: its matches in
-    // `matched_document`, sorted by address; points into `result`.
+    // `matched_document`.
     const GumboNode *matched_document;
-    jsa_t *matched;
+    XNodeSet matched;
 } XNodeQuery;
 
 typedef GumboNode XNode;
@@ -158,6 +168,7 @@ typedef struct {
 
 XNodeQuery       *xnode_query_create(const char *, const char **, int *);
 const XNodeArray *xnode_query_execute(XNodeQuery *, const XNode*);
+// Relative queries never match.
 int               xnode_query_matches(XNodeQuery *, XNode *);
 void              xnode_query_free(XNodeQuery *);
 XNodeSelector    *xnode_query_selector(XNodeQuery*, uint32_t);

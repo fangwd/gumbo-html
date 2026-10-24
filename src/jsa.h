@@ -27,7 +27,6 @@ JSA_TYPE jsa_pop(jsa_t *) ;
 void jsa_insert(jsa_t *, uint32_t, JSA_TYPE);
 int jsa_alloc(jsa_t * a, uint32_t size);
 int jsa_resize(jsa_t * a, uint32_t size);
-void jsa_dedup(jsa_t * a);
 
 #define jsa_get(a,i) ((a)->item[i])
 #define jsa_set(a, i, v) ((a)->item[i]=v)

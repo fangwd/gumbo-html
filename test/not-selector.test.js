@@ -162,3 +162,30 @@ test('dangling combinators throw at the top level as inside :not', () => {
   }
   assert.equal(doc.find('p ').length, 1);
 });
+
+test('relative document queries are relative to the root element', () => {
+  const doc = parse('<ul><li id="a">A</li></ul>');
+  const body = doc.firstOrThrow('body');
+  assert.deepEqual(doc.find('> body'), [body]);
+  assert.deepEqual(doc.find('> body > ul > li').map((el) => el.attr('id')), ['a']);
+  assert.deepEqual(doc.find('> html'), []);
+  assert.equal(doc.find('*')[0].tagName, 'html');
+  assert.deepEqual(ids(doc.firstOrThrow('ul').find('> li')), ['a']);
+});
+
+test('matching APIs reject selectors with a leading combinator', () => {
+  const doc = parse('<ul><li id="a">A</li><li id="b">B</li></ul>');
+  const a = doc.firstOrThrow('#a');
+  const b = doc.firstOrThrow('#b');
+  const ul = doc.firstOrThrow('ul');
+  for (const selector of ['> li', '> ul li', '+ li', '~ li']) {
+    assert.throws(() => a.matches(selector), /Bad selector/, selector);
+    assert.throws(() => a.closest(selector), /Bad selector/, selector);
+    assert.throws(() => a.next(selector), /Bad selector/, selector);
+    assert.throws(() => b.prev(selector), /Bad selector/, selector);
+    assert.throws(() => ul.children(selector), /Bad selector/, selector);
+    assert.throws(() => a.siblings(selector), /Bad selector/, selector);
+  }
+  assert.equal(a.matches('ul > li'), true);
+  assert.equal(a.next('li').attr('id'), 'b');
+});
