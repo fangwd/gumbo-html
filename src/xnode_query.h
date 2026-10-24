@@ -51,7 +51,7 @@ typedef enum {
     // Examples: h1#chapter1, #chapter1
     XQSEL_ID,
 
-    // 6.6. Pseudo-classes (NOT SUPPORTED)
+    // 6.6. Pseudo-classes (only :not() is supported)
     // A pseudo-class always consists of a "colon" (:) followed by the name of
     // the pseudo-class and optionally by a value between parentheses.
     // E.g. a:link, tr:nth-child(2n+1), :last-child, :first-of-type, etc.
@@ -121,6 +121,9 @@ typedef struct {
     // a list of {"class", "name", XQSEL_ATTR_SPACE_MATCH} selectors.
     jsa_t attributes;
 
+    // Queries excluded by :not(); each list argument is a separate query.
+    jsa_t negations;
+
     // Relation of this selector and the previous one, if any.
     XNodeQueryType combinator;
 } XNodeSelector;
@@ -129,6 +132,14 @@ typedef struct {
     jsa_t selectors;
     char *data;
     jsa_t result[2];
+
+    // Document whose chained :not() arguments have been matched.
+    const GumboNode *prepared_document;
+
+    // For a chained query matched node by node: its matches in
+    // `matched_document`, sorted by address; points into `result`.
+    const GumboNode *matched_document;
+    jsa_t *matched;
 } XNodeQuery;
 
 typedef GumboNode XNode;
@@ -147,6 +158,7 @@ typedef struct {
 
 XNodeQuery       *xnode_query_create(const char *, const char **, int *);
 const XNodeArray *xnode_query_execute(XNodeQuery *, const XNode*);
+int               xnode_query_matches(XNodeQuery *, XNode *);
 void              xnode_query_free(XNodeQuery *);
 XNodeSelector    *xnode_query_selector(XNodeQuery*, uint32_t);
 
@@ -154,6 +166,7 @@ XNodeSelector    *xnode_query_selector(XNodeQuery*, uint32_t);
 
 XNodeDocument *xnode_parse_html(const char *html, size_t length);
 const XNode   *xnode_document_root(const XNodeDocument*);
+const XNode   *xnode_document_node(const XNodeDocument*);
 void           xnode_document_free(XNodeDocument*);
 
 const char    *xnode_attr(const XNode*, const char *name);

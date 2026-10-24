@@ -107,8 +107,8 @@ Napi::Value Document::Find(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
-  return Element::Query(env, xdoc->xdoc_wrapper_, root, selector.c_str());
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
+  return Element::Query(env, xdoc->xdoc_wrapper_, document, selector.c_str());
 }
 
 Napi::Value Document::First(const Napi::CallbackInfo& info) {
@@ -122,8 +122,8 @@ Napi::Value Document::First(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
-  Napi::Value value = Element::Query(env, xdoc->xdoc_wrapper_, root, selector.c_str());
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
+  Napi::Value value = Element::Query(env, xdoc->xdoc_wrapper_, document, selector.c_str());
   if (!value.IsArray()) {
     return env.Undefined();
   }
@@ -145,8 +145,8 @@ Napi::Value Document::FirstSafe(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
-  Napi::Value value = Element::Query(env, xdoc->xdoc_wrapper_, root, selector.c_str());
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
+  Napi::Value value = Element::Query(env, xdoc->xdoc_wrapper_, document, selector.c_str());
   if (!value.IsArray()) {
     return env.Undefined();
   }
@@ -169,8 +169,8 @@ Napi::Value Document::Only(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
-  Napi::Value value = Element::Query(env, xdoc->xdoc_wrapper_, root, selector.c_str());
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
+  Napi::Value value = Element::Query(env, xdoc->xdoc_wrapper_, document, selector.c_str());
   if (!value.IsArray()) {
     return env.Undefined();
   }
@@ -192,8 +192,8 @@ Napi::Value Document::OnlySafe(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
-  Napi::Value value = Element::Query(env, xdoc->xdoc_wrapper_, root, selector.c_str());
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
+  Napi::Value value = Element::Query(env, xdoc->xdoc_wrapper_, document, selector.c_str());
   if (!value.IsArray()) {
     return env.Undefined();
   }
@@ -223,7 +223,7 @@ Napi::Value Document::Text(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
 
   QueryHandle query(selector.c_str());
   if (!query.get()) {
@@ -231,7 +231,7 @@ Napi::Value Document::Text(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
 
-  const XNodeArray *result = xnode_query_execute(query.get(), root);
+  const XNodeArray *result = xnode_query_execute(query.get(), document);
   if (result && xnode_array_size(result) > 0) {
     XNode *node = xnode_array_get(result, 0);
     std::string text;
@@ -265,7 +265,7 @@ Napi::Value Document::TextOrThrow(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
 
   QueryHandle query(selector.c_str());
   if (!query.get()) {
@@ -273,7 +273,7 @@ Napi::Value Document::TextOrThrow(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
 
-  const XNodeArray *result = xnode_query_execute(query.get(), root);
+  const XNodeArray *result = xnode_query_execute(query.get(), document);
   if (result && xnode_array_size(result) > 0) {
     XNode *node = xnode_array_get(result, 0);
     return Napi::String::New(env, get_inner_text(node));
@@ -293,7 +293,7 @@ Napi::Value Document::Exists(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
 
   QueryHandle query(selector.c_str());
   if (!query.get()) {
@@ -301,7 +301,7 @@ Napi::Value Document::Exists(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
 
-  const XNodeArray *result = xnode_query_execute(query.get(), root);
+  const XNodeArray *result = xnode_query_execute(query.get(), document);
   return Napi::Boolean::New(env, result && xnode_array_size(result) > 0);
 }
 
@@ -315,7 +315,7 @@ Napi::Value Document::Count(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 0, "selector", &selector)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
 
   QueryHandle query(selector.c_str());
   if (!query.get()) {
@@ -323,7 +323,7 @@ Napi::Value Document::Count(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
 
-  const XNodeArray *result = xnode_query_execute(query.get(), root);
+  const XNodeArray *result = xnode_query_execute(query.get(), document);
   return Napi::Number::New(env, result ? xnode_array_size(result) : 0);
 }
 
@@ -341,7 +341,7 @@ Napi::Value Document::Attr2(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 1, "name", &attrName)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
 
   QueryHandle query(selector.c_str());
   if (!query.get()) {
@@ -349,7 +349,7 @@ Napi::Value Document::Attr2(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
 
-  const XNodeArray *result = xnode_query_execute(query.get(), root);
+  const XNodeArray *result = xnode_query_execute(query.get(), document);
   if (result && xnode_array_size(result) > 0) {
     XNode *node = xnode_array_get(result, 0);
     const char *value = xnode_attr(node, attrName.c_str());
@@ -375,7 +375,7 @@ Napi::Value Document::AttrOrThrow2(const Napi::CallbackInfo& info) {
   if (!GetStringArg(info, 1, "name", &attrName)) {
     return env.Undefined();
   }
-  XNode *root = (XNode*) xnode_document_root(xdoc->xdoc_wrapper_->xdoc);
+  XNode *document = (XNode*) xnode_document_node(xdoc->xdoc_wrapper_->xdoc);
 
   QueryHandle query(selector.c_str());
   if (!query.get()) {
@@ -383,7 +383,7 @@ Napi::Value Document::AttrOrThrow2(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
 
-  const XNodeArray *result = xnode_query_execute(query.get(), root);
+  const XNodeArray *result = xnode_query_execute(query.get(), document);
   if (result && xnode_array_size(result) > 0) {
     XNode *node = xnode_array_get(result, 0);
     const char *value = xnode_attr(node, attrName.c_str());

@@ -4,12 +4,16 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 
 #define XNODE_BAD_NAME_CHARACTER       "Illegal name character"
 #define XNODE_BAD_COMBINATOR           "Illegal combinator"
 #define XNODE_EMPTY_SELECTOR           "Empty selector"
 #define XNODE_UNEXPECTED_CHAR          "Illegal character"
 #define XNODE_QUOTATION_MARK_EXPECTED  "Missing quotation mark"
+#define XNODE_UNSUPPORTED_PSEUDO_CLASS "Unsupported pseudo-class"
+#define XNODE_NEGATION_TOO_DEEP        "Too many nested :not()"
+#define XNODE_MAX_NEGATION_DEPTH       32
 
 #define xnew_zero(type) ((type*)calloc(1, sizeof (type)))
 
@@ -17,7 +21,7 @@ typedef struct {
     const char    *next;    // Next input char
     char          *data;    // Data buffer
     const char    *error;   // Error message
-    XNodeSelector *selector;
+    unsigned int   negation_depth;
 } XNodeQueryParser;
 
 // w  [ \t\r\n\f]
@@ -275,6 +279,7 @@ static XNodeSelector *xnode_selector_alloc() {
 
     result->type = NULL;
     jsa_init(&result->attributes);
+    jsa_init(&result->negations);
     result->combinator = XQSEL_DESCENDANT;
 
     return result;
@@ -290,7 +295,75 @@ static void xnode_selector_free(XNodeSelector *selector) {
         }
     }
     jsa_clean(&selector->attributes);
+    for (i = 0; i < selector->negations.size; i++) {
+        xnode_query_free((XNodeQuery *)jsa_get(&selector->negations, i));
+    }
+    jsa_clean(&selector->negations);
     xfree(selector);
+}
+
+static XNodeSelector *xnode_parse_selector(XNodeQueryParser *parser);
+static XNodeQuery *xnode_query_alloc(char *data);
+
+// Parses `selector (combinator selector)*` up to the end of the input or,
+// inside :not(), up to the closing ')' or the ',' before the next argument.
+static void xnode_parse_chain(XNodeQueryParser *parser, XNodeQuery *query,
+        XNodeQueryType combinator) {
+    int nested = parser->negation_depth > 0;
+
+    while (!parser->error) {
+        XNodeSelector *selector = xnode_parse_selector(parser);
+        const char *end;
+        if (parser->error) {
+            if (selector) xnode_selector_free(selector);
+            return;
+        }
+        if (!selector) {
+            parser->error = XNODE_EMPTY_SELECTOR;
+            return;
+        }
+        selector->combinator = combinator;
+        jsa_push(&query->selectors, selector);
+
+        end = parser->next;
+        if (!skip_space(parser)) {
+            if (nested) parser->error = XNODE_UNEXPECTED_CHAR;
+            return;
+        }
+        if (nested && (*parser->next == ')' || *parser->next == ',')) return;
+        parser->next = end;
+        combinator = xnode_parse_combinator(parser);
+    }
+}
+
+static void xnode_parse_negation(XNodeQueryParser *parser, XNodeSelector *owner) {
+    char *name;
+
+    parser->next++; // ':'
+    name = xnode_parse_ident(parser);
+    if (!name) return;
+    if (strcasecmp(name, "not") != 0) {
+        parser->error = XNODE_UNSUPPORTED_PSEUDO_CLASS;
+        return;
+    }
+    if (*parser->next != '(') {
+        parser->error = XNODE_UNEXPECTED_CHAR;
+        return;
+    }
+    if (parser->negation_depth >= XNODE_MAX_NEGATION_DEPTH) {
+        parser->error = XNODE_NEGATION_TOO_DEEP;
+        return;
+    }
+
+    parser->next++; // '('
+    parser->negation_depth++;
+    do {
+        // Argument tokens share the outer query's data buffer and lifetime.
+        XNodeQuery *query = xnode_query_alloc(NULL);
+        jsa_push(&owner->negations, query);
+        xnode_parse_chain(parser, query, XQSEL_DESCENDANT);
+    } while (!parser->error && *parser->next++ == ',');
+    parser->negation_depth--;
 }
 
 static XNodeSelector *xnode_parse_selector(XNodeQueryParser *parser) {
@@ -332,6 +405,10 @@ static XNodeSelector *xnode_parse_selector(XNodeQueryParser *parser) {
             if (!selector->type) selector->type = "*";
             xnode_parse_id_selector(parser, selector);
             break;
+        case ':':
+            if (!selector->type) selector->type = "*";
+            xnode_parse_negation(parser, selector);
+            break;
         default:
             if (!selector->type) {
                 // element_name: IDENT
@@ -351,6 +428,9 @@ static XNodeQuery* xnode_query_alloc(char *data) {
     jsa_init(&query->selectors);
     jsa_init(&query->result[0]);
     jsa_init(&query->result[1]);
+    query->prepared_document = NULL;
+    query->matched_document = NULL;
+    query->matched = NULL;
     return query;
 }
 
@@ -375,6 +455,7 @@ XNodeQuery *xnode_query_create(const char *query_text, const char **errptr,
     parser.next  = query_text;
     parser.data  = (char*) xmalloc(strlen(query_text) + 1);
     parser.error = NULL;
+    parser.negation_depth = 0;
 
     // To support queries like node:find('>span.hidden')
     if ((combinator = xnode_parse_combinator(&parser)) == XQSEL_UNKNOWN_TYPE) {
@@ -383,21 +464,7 @@ XNodeQuery *xnode_query_create(const char *query_text, const char **errptr,
     }
 
     query = xnode_query_alloc(parser.data);
-
-    while (*parser.next && !parser.error) {
-        XNodeSelector *selector = xnode_parse_selector(&parser);
-        if (parser.error) {
-            if (selector) {
-                xnode_selector_free(selector);
-            }
-            break;
-        }
-        if (!selector) break;
-        selector->combinator = combinator;
-        jsa_push(&query->selectors, selector);
-        if (!*parser.next) break;
-        combinator = xnode_parse_combinator(&parser);
-    }
+    xnode_parse_chain(&parser, query, combinator);
 
     if (!parser.error && query->selectors.size == 0) {
         parser.error = XNODE_EMPTY_SELECTOR;

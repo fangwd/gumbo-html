@@ -77,6 +77,10 @@ const XNode *xnode_document_root(const XNodeDocument *document) {
     return document->output->root;
 }
 
+const XNode *xnode_document_node(const XNodeDocument *document) {
+    return document->output->document;
+}
+
 void xnode_document_free(XNodeDocument *doc) {
     gumbo_destroy_output(&doc->parse_options, doc->output);
     xfree(doc->html);

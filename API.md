@@ -69,9 +69,19 @@ Supported selector features:
   general sibling `A ~ B`
 - Relative selectors beginning with a combinator, such as `> li`, when querying
   from a specific context
+- Negation: `td:not([data-name="attribute-title"])`, `a:not(.external)`.
+  Arguments may be compound selectors, selector chains, or comma-separated
+  lists: `p:not(.hidden, section > p)`. Multiple and nested `:not()` expressions
+  are supported, up to 32 nested levels. Each argument must be a complete,
+  supported selector; empty arguments and leading combinators are rejected.
+  As in browsers and jQuery, `:not()` arguments match against the whole
+  document, while the rest of a scoped selector is limited to the context:
+  `section.find('section p')` finds nothing, but
+  `section.find('p:not(section p)')` also excludes paragraphs inside the
+  context `section` itself.
 
-Unsupported selector features include selector lists (`a, img`), pseudo-classes
-(`:first-child`, `:not(...)`, `:nth-child(...)`), pseudo-elements, namespaces,
+Unsupported selector features include top-level selector lists (`a, img`), other
+pseudo-classes (`:first-child`, `:nth-child(...)`), pseudo-elements, namespaces,
 and general CSS identifier escaping.
 
 Invalid selectors throw `Error: Bad selector.`. Missing or non-string selector

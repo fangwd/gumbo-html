@@ -125,7 +125,7 @@ void jsa_dedup(jsa_t *a) {
     for (i = 0; i < n; i++) {
         for (j = i + 1; j < n;) {
             if (a->item[j] == a->item[i]) {
-                for (k = j; k < n; k++) {
+                for (k = j; k + 1 < n; k++) {
                     a->item[k] = a->item[k + 1];
                 }
                 n--;

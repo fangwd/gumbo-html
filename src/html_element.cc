@@ -59,50 +59,6 @@ private:
   XNodeQuery *query_;
 };
 
-bool MatchQueryAt(XNode *node, XNodeQuery *query, int index) {
-  if (!node || !query || index < 0) {
-    return false;
-  }
-
-  XNodeSelector *selector = xnode_query_selector(query, index);
-  if (!xnode_match_node(node, selector)) {
-    return false;
-  }
-
-  if (index == 0) {
-    return true;
-  }
-
-  switch (selector->combinator) {
-  case XQSEL_DESCENDANT: {
-    for (XNode *parent = xnode_parent(node); parent; parent = xnode_parent(parent)) {
-      if (MatchQueryAt(parent, query, index - 1)) {
-        return true;
-      }
-    }
-    return false;
-  }
-  case XQSEL_CHILD:
-    return MatchQueryAt(xnode_parent(node), query, index - 1);
-  case XQSEL_ADJACENT_SIBLING:
-    return MatchQueryAt(xnode_prev(node, NULL), query, index - 1);
-  case XQSEL_GENERAL_SIBLING:
-    for (XNode *prev = xnode_prev(node, NULL); prev; prev = xnode_prev(prev, NULL)) {
-      if (MatchQueryAt(prev, query, index - 1)) {
-        return true;
-      }
-    }
-    return false;
-  default:
-    return false;
-  }
-}
-
-bool MatchQuery(XNode *node, XNodeQuery *query) {
-  uint32_t count = jsa_size(&query->selectors);
-  return count > 0 && MatchQueryAt(node, query, static_cast<int>(count - 1));
-}
-
 } // namespace
 
 Element::Element(const Napi::CallbackInfo& info)
@@ -532,7 +488,7 @@ Napi::Value Element::Next(const Napi::CallbackInfo& info) {
       return env.Undefined();
     }
     for (XNode *next = xnode_next(elem->xnode_, NULL); next; next = xnode_next(next, NULL)) {
-      if (MatchQuery(next, query.get())) {
+      if (xnode_query_matches(query.get(), next)) {
         return Create(env, elem->xdoc_, next);
       }
     }
@@ -563,7 +519,7 @@ Napi::Value Element::Prev(const Napi::CallbackInfo& info) {
       return env.Undefined();
     }
     for (XNode *prev = xnode_prev(elem->xnode_, NULL); prev; prev = xnode_prev(prev, NULL)) {
-      if (MatchQuery(prev, query.get())) {
+      if (xnode_query_matches(query.get(), prev)) {
         return Create(env, elem->xdoc_, prev);
       }
     }
@@ -751,7 +707,7 @@ Napi::Value Element::Closest(const Napi::CallbackInfo& info) {
 
   XNode *current = xnode_parent(elem->xnode_);
   while (current) {
-    if (MatchQuery(current, query.get())) {
+    if (xnode_query_matches(query.get(), current)) {
       return Create(env, elem->xdoc_, current);
     }
     current = xnode_parent(current);
@@ -777,7 +733,7 @@ Napi::Value Element::Matches(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
 
-  return Napi::Boolean::New(env, MatchQuery(elem->xnode_, query.get()));
+  return Napi::Boolean::New(env, xnode_query_matches(query.get(), elem->xnode_));
 }
 
 Napi::Value Element::Is(const Napi::CallbackInfo& info) {
@@ -816,7 +772,7 @@ Napi::Value Element::Children(const Napi::CallbackInfo& info) {
   for (unsigned i = 0; i < kids->length; ++i) {
     XNode *child = static_cast<XNode*>(kids->data[i]);
     if (child->type != GUMBO_NODE_ELEMENT && child->type != GUMBO_NODE_TEMPLATE) continue;
-    if (filter && !MatchQuery(child, filter)) continue;
+    if (filter && !xnode_query_matches(filter, child)) continue;
     result.Set(count++, Create(env, elem->xdoc_, child));
   }
 
@@ -865,7 +821,7 @@ Napi::Value Element::Siblings(const Napi::CallbackInfo& info) {
     XNode *sibling = static_cast<XNode*>(kids->data[i]);
     if (sibling == elem->xnode_) continue;
     if (sibling->type != GUMBO_NODE_ELEMENT && sibling->type != GUMBO_NODE_TEMPLATE) continue;
-    if (filter && !MatchQuery(sibling, filter)) continue;
+    if (filter && !xnode_query_matches(filter, sibling)) continue;
     result.Set(count++, Create(env, elem->xdoc_, sibling));
   }
 
