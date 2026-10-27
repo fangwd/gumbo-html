@@ -88,6 +88,107 @@ std::string get_inner_text(GumboNode *node) {
   return "";
 }
 
+namespace {
+
+// Not rendered, so not part of innerText.
+bool is_hidden_tag(GumboTag tag) {
+  switch (tag) {
+    case GUMBO_TAG_HEAD: case GUMBO_TAG_SCRIPT: case GUMBO_TAG_STYLE:
+    case GUMBO_TAG_NOSCRIPT: case GUMBO_TAG_TEMPLATE:
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Laid out as a block: its text starts and ends a line.
+bool is_block_tag(GumboTag tag) {
+  switch (tag) {
+    case GUMBO_TAG_ADDRESS: case GUMBO_TAG_ARTICLE: case GUMBO_TAG_ASIDE: case GUMBO_TAG_BLOCKQUOTE:
+    case GUMBO_TAG_CAPTION: case GUMBO_TAG_DD: case GUMBO_TAG_DETAILS:
+    case GUMBO_TAG_DIV: case GUMBO_TAG_DL: case GUMBO_TAG_DT: case GUMBO_TAG_FIELDSET:
+    case GUMBO_TAG_FIGCAPTION: case GUMBO_TAG_FIGURE: case GUMBO_TAG_FOOTER: case GUMBO_TAG_FORM:
+    case GUMBO_TAG_H1: case GUMBO_TAG_H2: case GUMBO_TAG_H3: case GUMBO_TAG_H4: case GUMBO_TAG_H5:
+    case GUMBO_TAG_H6: case GUMBO_TAG_HEADER: case GUMBO_TAG_HGROUP: case GUMBO_TAG_HR:
+    case GUMBO_TAG_LEGEND: case GUMBO_TAG_LI: case GUMBO_TAG_MAIN: case GUMBO_TAG_MENU:
+    case GUMBO_TAG_NAV: case GUMBO_TAG_OL: case GUMBO_TAG_P: case GUMBO_TAG_PRE:
+    case GUMBO_TAG_SECTION: case GUMBO_TAG_SUMMARY: case GUMBO_TAG_TABLE: case GUMBO_TAG_TBODY:
+    case GUMBO_TAG_TFOOT: case GUMBO_TAG_THEAD: case GUMBO_TAG_TR: case GUMBO_TAG_UL:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool is_space(char c) {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
+}
+
+// Builds innerText: separators are held back until the next visible
+// character, so none lead, trail or repeat.
+class VisibleText {
+ public:
+  std::string result;
+
+  void walk(GumboNode *node, bool pre) {
+    if (node->type == GUMBO_NODE_TEXT || node->type == GUMBO_NODE_WHITESPACE ||
+        node->type == GUMBO_NODE_CDATA) {
+      append(node->v.text.text, pre);
+    } else if (node->type == GUMBO_NODE_ELEMENT) {
+      GumboTag tag = node->v.element.tag;
+      if (is_hidden_tag(tag)) return;
+      if (tag == GUMBO_TAG_BR) {
+        separate(kLine);
+        return;
+      }
+      bool block = is_block_tag(tag);
+      if (block) separate(kLine);
+      GumboVector *children = xnode_children(node);
+      if (children) {
+        for (unsigned i = 0; i < children->length; ++i) {
+          walk(static_cast<GumboNode*>(children->data[i]), pre || tag == GUMBO_TAG_PRE);
+        }
+      }
+      if (block) separate(kLine);
+      else if (tag == GUMBO_TAG_TD || tag == GUMBO_TAG_TH) separate(kCell);
+    }
+  }
+
+ private:
+  enum Separator { kNone, kSpace, kCell, kLine };
+  Separator pending_ = kNone;
+
+  void separate(Separator sep) {
+    if (sep > pending_) pending_ = sep;
+  }
+
+  void append(const char *text, bool pre) {
+    for (const char *p = text; *p; ++p) {
+      if (pre && *p == '\n') {
+        separate(kLine);
+      } else if (!pre && is_space(*p)) {
+        separate(kSpace);
+      } else {
+        if (!result.empty()) {
+          if (pending_ == kLine) result += '\n';
+          else if (pending_ == kCell) result += '\t';
+          else if (pending_ == kSpace) result += ' ';
+        }
+        pending_ = kNone;
+        result += *p;
+      }
+    }
+  }
+};
+
+}  // namespace
+
+std::string get_visible_text(GumboNode *node) {
+  VisibleText text;
+  text.walk(node, false);
+  return text.result;
+}
+
 std::string normalize_whitespace(const std::string &s) {
   std::string result;
   result.reserve(s.size());
@@ -159,7 +260,7 @@ Napi::Value Element::GetInnerText(const Napi::CallbackInfo& info) {
   if (element->xnode_->type == GUMBO_NODE_TEXT ||
       element->xnode_->type == GUMBO_NODE_ELEMENT ||
       element->xnode_->type == GUMBO_NODE_TEMPLATE) {
-    std::string text = get_inner_text(element->xnode_);
+    std::string text = get_visible_text(element->xnode_);
     return Napi::String::New(env, text);
   }
   return env.Undefined();

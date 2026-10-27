@@ -117,6 +117,26 @@ run('Basic API', () => {
     const doc = html.parse('<div>hello <span>world</span></div>');
     assert.strictEqual(doc.first('div').innerText, 'hello world');
   });
+
+  test('innerText lays text out as a browser renders it', () => {
+    const text = (source) => html.parse(`<div id=x>${source}</div>`).first('#x').innerText;
+    // blocks and <br> break lines; whitespace collapses; words split across inline elements stay whole
+    assert.strictEqual(text('<p>Recycled   Polyester</p><p><b>Luxe</b> fabrics</p>'), 'Recycled Polyester\nLuxe fabrics');
+    assert.strictEqual(text('Equipped wi<span>th</span> USB-A,<br>and USB-C<ul><li>One</li><li></li><li>Two</li></ul>'),
+      'Equipped with USB-A,\nand USB-C\nOne\nTwo');
+    // cells are tab-separated, rows are lines
+    assert.strictEqual(text('<table><tr><th>Name</th><td>Brass</td></tr><tr><td>A</td><td>B</td></tr></table>'), 'Name\tBrass\nA\tB');
+    // <pre> keeps its whitespace
+    assert.strictEqual(text('<pre>line 1\n  indented</pre>after'), 'line 1\n  indented\nafter');
+    // what is not rendered is not text
+    assert.strictEqual(text('<span>Hello</span> <style>a{}</style><script>b()</script><noscript>c</noscript>World'), 'Hello World');
+  });
+
+  test('textContent keeps text that is not rendered', () => {
+    const doc = html.parse('<div id=x><p>a</p><style>b{}</style><p>c</p></div>');
+    assert.strictEqual(doc.first('#x').textContent, 'ab{}c');
+    assert.strictEqual(doc.first('#x').innerText, 'a\nc');
+  });
 });
 
 // ============================================================

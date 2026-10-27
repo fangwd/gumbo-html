@@ -137,8 +137,8 @@ HTML element produced by Gumbo.
 | Property | Type | Description |
 | --- | --- | --- |
 | `documentElement` | `XElement` | Root element, usually `<html>`. |
-| `innerText` | `string` | Text from `documentElement`. |
-| `textContent` | `string` | Same text extraction as `innerText`. |
+| `innerText` | `string` | Rendered text of `documentElement`, laid out as described for elements below. |
+| `textContent` | `string` | Text nodes of `documentElement` concatenated, `<head>`, `<script>` and `<style>` included. |
 | `outerHTML` | `string` | Serialized root element HTML. |
 | `tagName` | `null` | Documents do not have a tag name. |
 | `nodeType` | `'DOCUMENT'` | Document node type. |
@@ -289,8 +289,8 @@ An `XElement` represents an element or another Gumbo node returned by
 | `nodeType` | `NodeType` | Gumbo node type. |
 | `parent` | `XElement \| null` | Parent element, or `null` for the document root. |
 | `outerHTML` | `string` | Source HTML for this node. |
-| `innerText` | `string` | Descendant text for text/element/template nodes. |
-| `textContent` | `string` | Same text extraction as `innerText`. |
+| `innerText` | `string` | The text as a browser renders it: `<head>`, `<script>`, `<style>`, `<noscript>` and `<template>` contents are left out; whitespace collapses to single spaces (kept inside `<pre>`); block elements (`p`, `div`, `li`, headings, table rows, ...) and `<br>` start new lines; table cells are tab-separated. |
+| `textContent` | `string` | Descendant text nodes concatenated as written, rendered or not; whitespace-only text between elements is left out. |
 | `tagName` | `string \| null` | Normalized tag name for element/template nodes; `null` for non-elements. |
 
 ```js
